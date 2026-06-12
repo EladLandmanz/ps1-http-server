@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live API Generator</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { background: #0066cc; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; }
+        #status { margin-top: 20px; font-weight: bold; color: green; }
+    </style>
+</head>
+<body>
+
+    <h1>Live Route Creator</h1>
+    <p>Create a new API endpoint instantly without restarting the server!</p>
+
+    <div class="form-group">
+        <label>HTTP Method</label>
+        <select id="method">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Endpoint Path</label>
+        <input type="text" id="path" placeholder="e.g., /api/test" required>
+    </div>
+
+    <div class="form-group">
+        <label>Response Body (JSON)</label>
+        <textarea id="responseBody" rows="6" placeholder='{ "message": "It works!" }' required></textarea>
+    </div>
+
+    <button onclick="createRoute()">Create Endpoint</button>
+
+    <div id="status"></div>
+
+    <script>
+        async function createRoute() {
+            const method = document.getElementById('method').value;
+            const path = document.getElementById('path').value;
+            const responseBody = document.getElementById('responseBody').value;
+            const statusDiv = document.getElementById('status');
+
+            try {
+                // Ensure the user typed valid JSON
+                JSON.parse(responseBody); 
+
+                // Send the data to our secret admin API
+                const response = await fetch('/admin/create-route', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ method, path, responseBody })
+                });
+
+                if (response.ok) {
+                    statusDiv.innerHTML = `Success! Try visiting: <a href="${path}" target="_blank">${path}</a>`;
+                    statusDiv.style.color = "green";
+                } else {
+                    statusDiv.textContent = "Error creating route.";
+                    statusDiv.style.color = "red";
+                }
+            } catch (err) {
+                statusDiv.textContent = "Error: Invalid JSON format in the response body.";
+                statusDiv.style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>

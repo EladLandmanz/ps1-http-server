@@ -1,4 +1,6 @@
 const net = require('net');
+const fs = require('fs');
+const path = require('path');
 
 const serveStatic = require('./static')
 const createRouter = require('./router')
@@ -16,25 +18,78 @@ router.get('/api/hello', (req, res) => {
   res.json({ message: 'Hello, World!' });
 });
 
-router.get('/api/grodos', (req, res) => {
-    res.json({loren: "loren?"})
-})
 
-//will decide on it later
-router.get('/api/specialty', (req, res) => {
-  res.json({ message: 'Hello, World!, specioal' });
+//endpoint for the frontend creation
+router.post('/admin/create-route', (req, res) => {
+  let requestData;
+    try {
+        requestData = JSON.parse(req.body);
+    } catch (e) {
+        return res.status(400).send("Invalid JSON.");
+    }
+
+    const { method, path: newPath, responseBody } = requestData;
+    const customJsonResponse = JSON.parse(responseBody);
+
+    // 1. Inject it into live memory so it works instantly without restarting
+    router.createEndpoint(method, newPath, (customReq, customRes) => {
+        customRes.json(customJsonResponse);
+    });
+
+    // 2. Save it permanently to the disk
+    const dbPath = require('path').resolve('./routes.json');
+    try {
+        // Read the current array of routes
+        const existingRoutes = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+        
+        // Push the new route into the array
+        existingRoutes.push({
+            method: method,
+            path: newPath,
+            responseBody: customJsonResponse
+        });
+
+        // Write the updated array back to the file
+        fs.writeFileSync(dbPath, JSON.stringify(existingRoutes, null, 2));
+
+    } catch (err) {
+        console.error("Failed to save to disk:", err);
+        return res.status(500).send("Route created in memory, but failed to save to disk.");
+    }
+
+    console.log(`Created and saved new route: ${method} ${newPath}`);
+    res.status(201).json({ success: true, message: "Route created and saved!" });
 });
 
-router.post('/api/users', (req, res) => {
-  // req.body contains parsed JSON
-  const { name, email } = req.body;
-  res.status(201).json({
-    id: Date.now(),
-    name,
-    email,
-    created: true
-  });
-});
+function loadPersistentRoutes(router) {
+    const dbPath = path.resolve('./routes.json');
+    
+    try {
+        // 1. Check if the file exists
+        if (!fs.existsSync(dbPath)) {
+            // If not, create it with an empty array
+            fs.writeFileSync(dbPath, '[]');
+            return;
+        }
+
+        // 2. Read the file and parse it back into a JS array
+        const rawData = fs.readFileSync(dbPath, 'utf8');
+        const savedRoutes = JSON.parse(rawData);
+
+        // 3. Loop through every saved route and inject it into the router
+        savedRoutes.forEach(entry => {
+            router.createEndpoint(entry.method, entry.path, (req, res) => {
+                res.json(entry.responseBody);
+            });
+            console.log(`Loaded saved route: ${entry.method} ${entry.path}`);
+        });
+
+    } catch (err) {
+        console.error("Failed to load routes.json:", err.message);
+    }
+}
+
+loadPersistentRoutes(router)
 
 const server = net.createServer((socket) => {
   // 'socket' is a duplex stream representing the connection

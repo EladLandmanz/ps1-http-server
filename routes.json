@@ -1,0 +1,9 @@
+[
+   {
+    "method": "GET",
+    "path": "/api/hello",
+    "responseBody":{
+        "message":"Hello world!"
+    }
+   } 
+]

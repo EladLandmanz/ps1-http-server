@@ -42,12 +42,18 @@ function createRouter() {
     return null;
   }
 
+  //expose this function to call from the outside
+  function createEndpoint(method, path, handler) {
+    addRoute(method, path, handler)
+  }
+
   return {
     get: (path, handler) => addRoute('GET', path, handler),
     post: (path, handler) => addRoute('POST', path, handler),
     put: (path, handler) => addRoute('PUT', path, handler),
     delete: (path, handler) => addRoute('DELETE', path, handler),
-    match
+    match,
+    createEndpoint
   };
 }
 
